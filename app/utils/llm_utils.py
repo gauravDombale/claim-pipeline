@@ -1,14 +1,14 @@
-import json
 import os
-from typing import Optional
-from openai import OpenAI
+from typing import Optional, Type, TypeVar
+from pydantic import BaseModel
+from openai import AsyncOpenAI
 
 # Lazy client — instantiated on first use so load_dotenv() in main.py
 # has already populated the environment before the key is read.
-_client: Optional[OpenAI] = None
+_client: Optional[AsyncOpenAI] = None
 
 
-def _get_client() -> OpenAI:
+def _get_client() -> AsyncOpenAI:
     global _client
     if _client is None:
         api_key = os.getenv("OPENAI_API_KEY")
@@ -17,17 +17,18 @@ def _get_client() -> OpenAI:
                 "OPENAI_API_KEY is not set. "
                 "Create a .env file from .env.example and add your key."
             )
-        _client = OpenAI(api_key=api_key)
+        _client = AsyncOpenAI(api_key=api_key)
     return _client
 
 
-def vision_call(system_prompt: str, user_prompt: str, images_b64: list[str]) -> dict:
+T = TypeVar("T", bound=BaseModel)
+
+
+async def vision_call(system_prompt: str, user_prompt: str, images_b64: list[str], response_model: Type[T]) -> T:
     """
     Send one or more base64 PNG images to GPT-4o with a prompt.
-    Returns parsed JSON dict from the model's response.
-
-    All agents use this helper — it handles the image message format
-    and JSON parsing in one place.
+    Uses OpenAI's native Structured Outputs via `.parse()` to guarantee
+    the response strictly matches the provided Pydantic `response_model`.
     """
     content = [{"type": "text", "text": user_prompt}]
 
@@ -40,20 +41,23 @@ def vision_call(system_prompt: str, user_prompt: str, images_b64: list[str]) -> 
             },
         })
 
-    response = _get_client().chat.completions.create(
-        model="gpt-4o",
+    client = _get_client()
+    response = await client.beta.chat.completions.parse(
+        model="gpt-4o-2024-08-06",  # Support for Structured Outputs via math model format
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": content},
         ],
-        response_format={"type": "json_object"},
+        response_format=response_model,
         temperature=0,
     )
 
-    raw = response.choices[0].message.content
-    return json.loads(raw)
+    result = response.choices[0].message.parsed
+    if result is None:
+        raise ValueError("Model failed to parse structured output properly.")
+    return result
 
 
-def vision_call_single(system_prompt: str, user_prompt: str, b64_image: str) -> dict:
+async def vision_call_single(system_prompt: str, user_prompt: str, b64_image: str, response_model: Type[T]) -> T:
     """Convenience wrapper for a single image."""
-    return vision_call(system_prompt, user_prompt, [b64_image])
+    return await vision_call(system_prompt, user_prompt, [b64_image], response_model)

@@ -41,7 +41,7 @@ async def process_claim(
 
     # Run the LangGraph pipeline
     try:
-        final_state = pipeline.invoke(initial_state)
+        final_state = await pipeline.ainvoke(initial_state)
     except Exception as e:
         print(f"Pipeline error: {e}")
         raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")

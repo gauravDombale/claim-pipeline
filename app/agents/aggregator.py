@@ -1,7 +1,7 @@
 from app.core.models import ClaimState
 
 
-def aggregator(state: ClaimState) -> ClaimState:
+async def aggregator(state: ClaimState) -> ClaimState:
     """
     LangGraph node: Aggregator
 

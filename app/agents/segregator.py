@@ -1,4 +1,5 @@
 import traceback
+from pydantic import BaseModel
 from app.core.models import ClaimState, PageClassification, DOC_TYPES
 from app.utils.pdf_utils import pdf_to_page_images
 from app.utils.llm_utils import vision_call_single
@@ -16,15 +17,18 @@ Classify it into EXACTLY ONE of these document types:
 - investigation_report : Lab reports, blood tests, radiology reports, diagnostic results
 - cash_receipt         : Cash payment receipts from hospital or clinic
 - other                : Anything that doesn't fit the above (referral letters, appointment letters, questionnaires)
-
-Respond ONLY with valid JSON in this exact format:
-{"doc_type": "<one of the types above>", "confidence": "<high|medium|low>", "reason": "<one sentence>"}
 """
 
-USER_PROMPT = "Classify this document page. Return JSON only."
+USER_PROMPT = "Classify this document page."
 
 
-def segregator_agent(state: ClaimState) -> ClaimState:
+class SegregatorResponse(BaseModel):
+    doc_type: str
+    confidence: str
+    reason: str
+
+
+async def segregator_agent(state: ClaimState) -> ClaimState:
     """
     LangGraph node: Segregator Agent
 
@@ -45,15 +49,20 @@ def segregator_agent(state: ClaimState) -> ClaimState:
         print(f"[Segregator] Classifying page {page_num}/{len(pages)}...")
 
         try:
-            result = vision_call_single(SYSTEM_PROMPT, USER_PROMPT, b64)
-            doc_type = result.get("doc_type", "other")
+            result = await vision_call_single(
+                SYSTEM_PROMPT, 
+                USER_PROMPT, 
+                b64, 
+                response_model=SegregatorResponse
+            )
+            doc_type = result.doc_type
 
             # Validate — fallback to "other" if LLM returns something unexpected
             if doc_type not in DOC_TYPES:
                 print(f"[Segregator] Unknown type '{doc_type}' on page {page_num}, defaulting to 'other'")
                 doc_type = "other"
 
-            print(f"[Segregator] Page {page_num} → {doc_type} ({result.get('confidence', '?')})")
+            print(f"[Segregator] Page {page_num} → {doc_type} ({result.confidence})")
 
         except Exception as e:
             print(f"[Segregator] ERROR on page {page_num}: {e}")

@@ -21,7 +21,9 @@ from app.core.models import ClaimState
 from app.core.pipeline import pipeline
 
 
-def test_pipeline(pdf_path: str, claim_id: str = "TEST-001"):
+import asyncio
+
+async def test_pipeline(pdf_path: str, claim_id: str = "TEST-001"):
     print(f"\nLoading PDF: {pdf_path}")
     with open(pdf_path, "rb") as f:
         pdf_bytes = f.read()
@@ -29,7 +31,7 @@ def test_pipeline(pdf_path: str, claim_id: str = "TEST-001"):
     print(f"PDF size: {len(pdf_bytes)} bytes")
 
     state = ClaimState(claim_id=claim_id, pdf_bytes=pdf_bytes)
-    final_state = pipeline.invoke(state)
+    final_state = await pipeline.ainvoke(state)
 
     result = final_state.get("result") if isinstance(final_state, dict) else final_state.result
     print("\n" + "="*60)
@@ -41,4 +43,4 @@ def test_pipeline(pdf_path: str, claim_id: str = "TEST-001"):
 
 if __name__ == "__main__":
     pdf_path = sys.argv[1] if len(sys.argv) > 1 else "final_image_protected.pdf"
-    test_pipeline(pdf_path)
+    asyncio.run(test_pipeline(pdf_path))
