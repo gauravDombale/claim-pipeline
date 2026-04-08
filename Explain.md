@@ -29,17 +29,22 @@
 **Script:**
 > "Next, we have our three extraction nodes. Let's look at the ID Agent as an example. Instead of receiving the whole PDF, the very first thing it does is call a helper function `filter_pages_by_types`. This queries the LangGraph state so that the ID Agent *only* receives images classified as `identity_document` or `claim_forms`. Once isolated, the agent extracts targeted points like patient name, dates of birth, and policy numbers into a strict JSON schema. The Discharge Agent and Bill Agent follow the exact same pattern for their respective clinical and financial domains."
 
-## 🎬 Section 6: The Aggregator (3:30 - 3:45)
+## 🎬 Section 6: Enterprise-Grade Architecture (3:30 - 4:15)
+**Visual:** Show `app/utils/llm_utils.py` highlighting `AsyncOpenAI` and `.parse()`, or run `pytest` in your terminal.
+**Script:**
+> "I also want to quickly highlight how this setup is built for production. First, the entire pipeline is completely asynchronous. This means these heavy LLM vision tasks won't block the core FastAPI event loop under load. Second, I didn't rely on 'prompt hacking' to convince the model to output JSON. Instead, I securely map my extractions to `Pydantic` models using OpenAI's native Structured Outputs. This guarantees 100% type reliability. Finally, the project includes lightweight mocked unit tests using `pytest` to validate the LangGraph routing logic instantly without racking up API charges."
+
+## 🎬 Section 7: The Aggregator (4:15 - 4:30)
 **Visual:** Open `app/agents/aggregator.py`.
 **Script:**
-> "Once the parallel extraction finishes, the state merges at the **Aggregator node**. This node doesn't need to make any LLM calls—it simply takes the structured models produced by the three extraction agents, maps out the page classification history for transparency, and bundles everything into the final clean JSON payload ready to be returned by FastAPI."
+> "Once the parallel extraction finishes, the state merges at the **Aggregator node**. This node simply takes the structured Pydantic models produced by the agents, maps out the page classification history for transparency, and bundles everything into the exact JSON payload demanded by the requirements."
 
-## 🎬 Section 7: Live Demonstration (3:45 - End)
+## 🎬 Section 8: Live Demonstration (4:30 - End)
 **Visual:** Open `http://localhost:8000/docs` (Swagger UI). Execute the `POST /api/process` endpoint using the sample PDF.
 **Script:**
-> "Finally, let's see it in action. I'm using FastAPI’s auto-generated Swagger UI. I'll pass in a sample claim ID and upload the `final_image_protected.pdf`. 
+> "Finally, let's see it in action. I'm using FastAPI’s auto-generated Swagger UI. I'll pass in a standard claim ID and upload the `final_image_protected.pdf`. 
 > *(Click Execute and let the screen record the terminal running in the background if possible, showing the agent logs).*
-> As you can see, the API successfully processes the document and returns a highly structured JSON response. It gives us a map of exactly how each page was classified, alongside the neatly extracted Identity, Discharge, and Billing details. 
+> As you can see, the API successfully processes the document and returns a highly structured, perfectly validated JSON response. It gives us a map of exactly how each page was classified, alongside the neatly extracted Identity, Discharge, and Billing details. 
 > 
 > That concludes my walkthrough. The full code is available in my GitHub repository. Thank you for your time!"
 

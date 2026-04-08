@@ -135,6 +135,13 @@ curl -X POST http://localhost:8000/api/process \
 python tests/test_pipeline.py final_image_protected.pdf
 ```
 
+## Enterprise-Grade Features 🚀
+
+To ensure this pipeline functions like a true production system, it features:
+- **Full Asynchronous Architecture:** Uses `AsyncOpenAI` within LangGraph to ensure the heavy GPT-4o Vision calls never block the FastAPI event loop, enabling extreme concurrency.
+- **Native Structured Outputs:** Instead of fragile text prompts asking for JSON, the LLM is tightly bound to `Pydantic` models via OpenAI's `.parse()` method. This guarantees the extracted keys and data types evaluate perfectly every time.
+- **Mocked Unit Testing:** A local `pytest` suite uses `unittest.mock.AsyncMock` to independently verify agent logic and routing behavior instantly, without consuming API credits.
+
 ## Tech Stack
 
 - **FastAPI** — REST API layer
